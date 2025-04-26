@@ -421,6 +421,16 @@ return {
 	/**
 	 * Remove expired elements, if none present it will remove the oldest element
 	 */
-	shrink: () => Prune(LoadCache(), true)
+	shrink: () => Prune(LoadCache(), true),
+
+	/**
+	 * Remove expired elements
+	 */
+	prune: () => Prune(LoadCache(), false),
+
+	/**
+	 * Delete all hx-keep data
+	 */
+	clear: () => { localStorage.removeItem("hx-keep") }
 }
 }()
