@@ -1,4 +1,9 @@
-Keep your htmx client state persistent across refreshes, new windows, and re-opening of your pages.
+Keep your htmx client state persistent across refreshes, new windows, and re-opening of your pages - as simple as:
+
+```html
+<div id="logs" hx-keep="first 3">...</div>
+<form id="my-form" hx-keep="form">...</form>
+```
 
 ![banner](/images/banner.gif)
 
@@ -7,7 +12,7 @@ Keep your htmx client state persistent across refreshes, new windows, and re-ope
 Import the library in your client side.
 
 ```html
-<script src="https://unpkg.com/hx-keep@1.0.6"></script>
+<script src="https://unpkg.com/hx-keep@1.0.0"></script>
 ```
 
 Enable the library at the level of your DOM you desire. i.e.:

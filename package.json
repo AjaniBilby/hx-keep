@@ -1,6 +1,6 @@
 {
 	"name": "hx-keep",
-	"version": "0.0.3",
+	"version": "1.0.0",
 	"description": "keep htmx client state across page refreshes",
 	"keywords": [
 		"htmx",
