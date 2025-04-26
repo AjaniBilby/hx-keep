@@ -14,7 +14,7 @@ We also include bindings to allow client side code to read/write into the `hx-pa
 Import the library in your client side.
 
 ```html
-<script src="https://unpkg.com/hx-keep@1.0.3"></script>
+<script src="https://unpkg.com/hx-keep@1.0.4"></script>
 ```
 
 Enable the library at the level of your DOM you desire. i.e.:
