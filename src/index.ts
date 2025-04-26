@@ -108,8 +108,12 @@ function SaveNode(element: Element, simulated: boolean) {
 
 			// retain extra data not in current form
 			const existing = GetCache(key, hash);
-			if (existing && existing.m == entry.m && typeof existing.d === "object") {
-				for (const key in existing.d) entry.d[key] = existing.d[key];
+			if (existing && existing.m == entry.m && typeof existing.d === "object") entry.d = existing.d;
+
+			// check boxes will be missing from the form, so turn them off
+			for (const key in entry.d) {
+				if (entry.d[key] !== "on") continue;
+				entry.d[key] = "off";
 			}
 
 			const formData = new FormData(element);
