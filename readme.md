@@ -63,6 +63,18 @@ This can be helpful if on a specific load you want it to not restore from cache,
 
 Identical behaviour to the [`HX-Keep-Evict`](#response-hx-keep-evict) header, however you can also include the value directly in any element for it to take affect when mounted by htmx.
 
+### `hx-keep-expiry`
+
+How long until the value should be cleared from local storage? Defaults to 30 minutes if unspecified.
+This must be an integer value with a postfix for the units.
+
+| Postfix | Description |
+| `s` | Seconds (i.e. `30s`) |
+| `h` | Hours |
+| `d` | Days |
+
+> Note: `hx-push` will not automatically clear the data as soon as they expire, it will only prune data when a window is started
+
 ---
 
 ## Http Headers
@@ -108,7 +120,7 @@ Returns the data currently stored in `hx-keep` under this key.
 ### Set
 
 ```ts
-window.hx_keep.set = (key: string, data: Record<string, string> | string) => void;
+window.hx_keep.set = (key: string, data: Record<string, string> | string, expiry?: number) => void;
 ```
 
 Allows you to add data into `hx-keep`.
@@ -121,6 +133,8 @@ hx_keep.set("example", { baz: "boo" });
 
 hx_keep.get("example"); // { "foo": "bar", "baz": "boo" }
 ```
+
+If expiry is unspecified it will continue with the currently expiry for the key. However when specified it must be measured in milliseconds from now.
 
 ### GetValue
 
