@@ -1,12 +1,12 @@
 {
 	"name": "hx-keep",
 	"version": "0.0.1",
-	"description": "easy keyboard navigation without having to change your html",
+	"description": "keep htmx client state across page refreshes",
 	"keywords": [
-		"dpad",
-		"keyboard",
-		"navigation",
-		"html",
+		"htmx",
+		"local-storage",
+		"cache",
+		"form",
 		"client"
 	],
 	"homepage": "https://hx-keep.ajanibilby.com",
