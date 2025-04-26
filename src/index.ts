@@ -55,6 +55,19 @@ const DEFAULT_EXPIRY = 30 * 60; // 30 mins in seconds
 	}
 });
 
+function HasBadHistory(element: Element) {
+	return !!element.querySelector("[hx-history='false']")
+}
+
+function RemoveBadHistory(html: string) {
+	const container = document.createElement("div");
+	container.innerHTML = html;
+
+	for (const el of container.querySelectorAll("[hx-history='false']")) el.remove();
+
+	return container.innerHTML;
+}
+
 function SaveNode(element: Element, simulated: boolean) {
 	const key = GetKey(element);
 	if (!key) return;
@@ -76,12 +89,14 @@ function SaveNode(element: Element, simulated: boolean) {
 	switch (mode) {
 		case "innerHTML": {
 			entry.m = MODES.indexOf("innerHTML");
-			entry.d = element.innerHTML;
+			entry.d = HasBadHistory(element) ? RemoveBadHistory(element.innerHTML) : element.innerHTML;
+
 			break;
 		}
 		case "outerHTML": {
 			entry.m = MODES.indexOf("outerHTML");
-			entry.d = element.innerHTML;
+			entry.d = HasBadHistory(element) ? RemoveBadHistory(element.outerHTML) : element.outerHTML;
+
 			break;
 		}
 		case "form": {
@@ -98,7 +113,15 @@ function SaveNode(element: Element, simulated: boolean) {
 			}
 
 			const formData = new FormData(element);
-			for (const [name, value] of formData.entries()) entry.d[name] = value.toString();
+			const historyCheck = HasBadHistory(element);
+			for (const [name, value] of formData.entries()) {
+				if (historyCheck) {
+					const input = element.querySelector(`[name=${name}]`);
+					if (input?.getAttribute("hx-history") === "false") continue;
+				}
+
+				entry.d[name] = value.toString();
+			}
 
 
 			break;
@@ -118,10 +141,14 @@ function SaveNode(element: Element, simulated: boolean) {
 				const limit = Number(mode.slice("first ".length)) || 0;
 				entry.d = [...element.children].slice(0, limit).map(x => x.outerHTML).join("");
 
+				if (HasBadHistory(element)) entry.d = RemoveBadHistory(entry.d);
+
 			} else if (mode.startsWith("last ")) {
 				const limit = Number(mode.slice("last ".length)) || 0;
 
 				entry.d = [...element.children].slice(-limit).map(x => x.outerHTML).join("");
+
+				if (HasBadHistory(element)) entry.d = RemoveBadHistory(entry.d);
 			} else {
 				console.error("Invalid hx-keep mode", element);
 				return;

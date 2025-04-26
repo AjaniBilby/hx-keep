@@ -1,7 +1,7 @@
 <html>
 	<head>
 		<script src="https://unpkg.com/htmx.org@2.0.4" crossOrigin="anonymous"></script>
-		<script src="https://unpkg.com/hx-keep@1.0.2"  crossOrigin="anonymous"></script>
+		<script src="https://unpkg.com/hx-keep@1.0.3"  crossOrigin="anonymous"></script>
 		<title>Basic Example</title>
 	</head>
 	<body hx-ext="hx-keep">
@@ -10,7 +10,7 @@
 		<div style="display: flex; gap: 10px; margin-top: 10px; align-items: flex-start;">
 			<div className="card" style="padding: 10px;">
 				<div style="display: flex; gap: 10px; align-items: center;">
-					<button hx-put="" hx-target="#logs" hx-swap="afterbegin">Push</button>
+					<button hx-get="/example/basic/line.html" hx-target="#logs" hx-swap="afterbegin">Push</button>
 					<div className="muted-text">keep top 3</div>
 				</div>
 
@@ -31,6 +31,8 @@
 					<input type="radio" name="color" value="blue"></input>
 				</div>
 				<input type="checkbox" name="check"></input>
+
+				<input name="pass" type="password" hx-history="false"></input>
 
 				<div><button type="reset" className="secondary">Reset</button></div>
 			</form>

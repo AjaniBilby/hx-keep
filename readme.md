@@ -75,6 +75,10 @@ This must be an integer value with a postfix for the units.
 
 > Note: `hx-push` will not automatically clear the data as soon as they expire, it will only prune data when a window is started
 
+### `hx-history="false"`
+
+This library will respect [hx-history](https://htmx.org/attributes/hx-history/), and omit any inputs or elements with this attribute when saving it's data.
+
 ---
 
 ## Http Headers
