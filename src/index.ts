@@ -41,12 +41,13 @@ const DEFAULT_EXPIRY = 30 * 60; // 30 mins in seconds
 
 			case "htmx:configRequest": {
 				const node: Element = event.target || event.detail.elt;
-				const key = GetKey(node);
+				const headers = event.detail.headers as Record<string, string> ;
 
-				if (key) {
-					const headers = event.detail.headers as Record<string, string> ;
-					headers["HX-Keep-Key"] = key;
-				}
+				const key = GetKey(node);
+				if (key) headers["hx-keep-key"] = key;
+
+				const hash = GetAttribute(node, "hx-keep-hash");
+				if (hash) headers["hx-keep-hash"] = hash;
 
 				return;
 			}
@@ -368,6 +369,26 @@ document.addEventListener("load", () => {
 	for (const node of nodes) RestoreNode(node);
 });
 
+function Set(key: string, data: Record<string, string> | string, expiry?: number): void {
+	const entry: CacheEntry = GetCache(key) || { d: "", m: 0, t: "" };
+	entry.t = Math.floor(Date.now() / 1000).toString(36);
+
+	if (expiry) entry.e = Math.floor(expiry / 1000).toString(36);
+
+	if (typeof data === "string") {
+		entry.d = data;
+		entry.m = MODES.indexOf("value");
+	} else if (typeof entry.d === "string") {
+		entry.d = data;
+		entry.m = MODES.indexOf("form");
+	} else {
+		for (const key in data) entry.d[key] = data[key];
+		entry.m = MODES.indexOf("form");
+	}
+
+	SetCache(key, entry);
+}
+
 
 return {
 	/**
@@ -393,24 +414,33 @@ return {
 	/**
 	 * Save data into the hx-keep, this will only add data/overwrite, and will not remove any omitted entries
 	 */
-	set: (key: string, data: Record<string, string> | string, expiry?: number): void => {
-		const entry: CacheEntry = GetCache(key) || { d: "", m: 0, t: "" };
-		entry.t = Math.floor(Date.now() / 1000).toString(36);
+	set: Set,
 
-		if (expiry) entry.e = Math.floor(expiry / 1000).toString(36);
+	/**
+	 * Get form value
+	 */
+	getValue: (ctx: Element, name: string): string | null => {
+		const key = GetKey(ctx);
+		if (!key) return null;
 
-		if (typeof data === "string") {
-			entry.d = data;
-			entry.m = MODES.indexOf("value");
-		} else if (typeof entry.d === "string") {
-			entry.d = data;
-			entry.m = MODES.indexOf("form");
-		} else {
-			for (const key in data) entry.d[key] = data[key];
-			entry.m = MODES.indexOf("form");
-		}
+		const data = GetCache(key)?.d;
+		if (!data || typeof data !== "object") return null;
 
-		SetCache(key, entry);
+		return data[name] || null;
+	},
+
+	/**
+	 * Set form value
+	 * @param expiry in milliseconds
+	 */
+	setValue: (ctx: Element, name: string, value: string, expiry?: number) => {
+		const key = GetKey(ctx);
+		if (!key) return null;
+
+		const forward = {} as Record<string, string>;
+		forward[name] = value;
+
+		Set(key, forward, expiry);
 	},
 
 	/**

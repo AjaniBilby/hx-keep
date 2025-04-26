@@ -1,0 +1,39 @@
+<html>
+	<head>
+		<script src="https://unpkg.com/htmx.org@2.0.4" crossOrigin="anonymous"></script>
+		<script src="https://unpkg.com/hx-keep@0.0.3"  crossOrigin="anonymous"></script>
+		<title>Basic Example</title>
+	</head>
+	<body hx-ext="hx-keep">
+		<h1>Basic Example</h1>
+
+		<div style="display: flex; gap: 10px; margin-top: 10px; align-items: flex-start;">
+			<div className="card" style="padding: 10px;">
+				<div style="display: flex; gap: 10px; align-items: center;">
+					<button hx-put="" hx-target="#logs" hx-swap="afterbegin">Push</button>
+					<div className="muted-text">keep top 3</div>
+				</div>
+
+				<div
+					id="logs"
+					style="display: flex; gap: 10px; flex-direction: column;"
+					hx-keep="first 3"
+					hx-keep-expiry="30h"
+				></div>
+			</div>
+
+			<form method="POST" id="form" hx-keep="form" className="card" style="padding: 10px;">
+				<input name="first"></input>
+
+				<div style="display: flex; gap: 10px;">
+					<input type="radio" name="color" value="red"></input>
+					<input type="radio" name="color" value="green"></input>
+					<input type="radio" name="color" value="blue"></input>
+				</div>
+				<input type="checkbox" name="check"></input>
+
+				<div><button type="reset" className="secondary">Reset</button></div>
+			</form>
+		</div>
+	</body>
+</html>

@@ -1,3 +1,7 @@
+Keep your htmx client state persistent across refreshes, new windows, and re-opening of your pages.
+
+![banner](/images/banner.gif)
+
 ## Getting Started
 
 Import the library in your client side.
@@ -17,30 +21,40 @@ Enable the library at the level of your DOM you desire. i.e.:
 
 All html attributes can have the `data-` prefix if required by your framework.
 
-### `hx-keep`
+### `hx-keep="{mode}"`
+
+This attribute specifies which data to store and restore from based on the mode set
 
 | Mode | Description |
 | :- | :- |
-| `innerHTML` | todo
-| `outerHTML` | todo
-| `form`  | todo
-| `value` | todo
+| `innerHTML` | Will keep the entire outer html of the element
+| `outerHTML` | Will keep only the inner html of the element
+| `first x` | Will keep only the first `x` elements inside the main element. To prevent cutting in weird places we recommend wrapping items in a `<div style="display:contents;">` so you can control where it cuts.
+| `last x` | Same as `first` but takes the last elements
+| `form`  | Tracks and restores only the form values, rather than the entire html
+| `value` | Identical to `form` but for use directly on an `<input>`
 
 ### `hx-keep-key`
 
-todo
+Used to tell `hx-keep` how to identify the element, especially useful if it is shared across multiple urls or locations.
 
-### `hx-keep-evict`
-
-todo
+If the key is not specified, `hx-keep` will assume the key is `${url.pathname}#${element.id}`.
+If both the key and id are not specified on the element, then the whole element will be ignored.
 
 ### `hx-keep-hash`
 
-todo
+The hash is just a simple string value, and if the hash on the element, and the hash of the stored data do not match, then the element will not be restored. This can be helpful if you want to ensure content from an old format is not being restored into a new layout when you update your site.
 
-### `hx-keep-restore`
+You could also use this as a date-stamp, so if the underlying data in a form changes it throws away the client cached form.
 
-todo
+### `hx-keep-restore="off"`
+
+If set to `off`, then `hx-keep` will not restore, however it will still save when changes are made.
+This can be helpful if on a specific load you want it to not restore from cache, and instead override with the server's contents.
+
+### `hx-keep-evict`
+
+Identical behaviour to the [`HX-Keep-Evict`](#response-hx-keep-evict) header, however you can also include the value directly in any element for it to take affect when mounted by htmx.
 
 ---
 
@@ -50,6 +64,10 @@ todo
 
 If a htmx request is triggered from an element with a `hx-keep-key`, that value will be included in the request sent to the server.
 This is helpful in combination with the [hx-keep-evict header](#response-hx-keep-evict) to clear a value from `hx-keep` after it has been submitted to the server.
+
+### Request: `HX-Keep-Hash`
+
+Similar to [`HX-Keep-Key`](#request-hx-keep-key), but instead will include the `hx-keep-hash` value as a http header.
 
 ### Response: `HX-Keep-Evict`
 
@@ -96,6 +114,22 @@ hx_keep.set("example", { baz: "boo" });
 
 hx_keep.get("example"); // { "foo": "bar", "baz": "boo" }
 ```
+
+### GetValue
+
+```ts
+window.hx_keep.getValue = (key: Element, name: string) => string | null;
+```
+
+Shorthand for `hx_keep.get(hx_keep.context(element), name)`
+
+### SetValue
+
+```ts
+window.hx_keep.setValue = (key: Element, name: string, value: string, expiry?: number) => void;
+```
+
+Shorthand for `hx_keep.set(hx_keep.context(element), name, value, expiry)`
 
 ### Evict
 
