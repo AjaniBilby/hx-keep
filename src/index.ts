@@ -4,12 +4,7 @@ const MODES = [ "innerHTML", "outerHTML", "form", "value" ];
 const DEFAULT_EXPIRY = 30 * 60; // 30 mins in seconds
 
 (globalThis as any).htmx.defineExtension("hx-keep", {
-	init: () => {
-		Prune(LoadCache())
-
-		const nodes = document.body.querySelectorAll("[hx-keep],[data-hx-keep]");
-		for (const node of nodes) RestoreNode(node);
-	},
+	init: () => { Prune(LoadCache()) },
 	onEvent: (name: string, event: CustomEvent) => {
 		switch (name) {
 			case "htmx:afterProcessNode": {
@@ -366,6 +361,11 @@ document.addEventListener("change", (ev) => {
 document.addEventListener("keyup", (ev) => {
 	if (ev.target instanceof HTMLInputElement)    return AutoSave(ev.target);
 	if (ev.target instanceof HTMLTextAreaElement) return AutoSave(ev.target);
+});
+
+document.addEventListener("load", () => {
+	const nodes = document.body.querySelectorAll("[hx-keep],[data-hx-keep]");
+	for (const node of nodes) RestoreNode(node);
 });
 
 
