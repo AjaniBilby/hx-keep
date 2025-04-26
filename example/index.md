@@ -1,4 +1,4 @@
 # Examples
 
-- [Basic](./basic.html)
-- [React](./react.html)
+- [Basic](./basic)
+- [React](./react)
