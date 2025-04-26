@@ -1,0 +1,28 @@
+{
+	"name": "hx-keep",
+	"version": "0.0.1",
+	"description": "easy keyboard navigation without having to change your html",
+	"keywords": [
+		"dpad",
+		"keyboard",
+		"navigation",
+		"html",
+		"client"
+	],
+	"homepage": "https://hx-keep.ajanibilby.com",
+	"bugs": {
+		"url": "https://github.com/AjaniBilby/hx-keep/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/AjaniBilby/hx-keep.git"
+	},
+	"license": "MIT",
+	"author": "Ajani Bilby",
+	"type": "commonjs",
+	"main": "dist/index.min.js",
+	"devDependencies": {
+		"terser": "^5.39.0",
+		"typescript": "^5.8.3"
+	}
+}
