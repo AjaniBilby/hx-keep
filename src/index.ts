@@ -92,7 +92,7 @@ function SaveNode(element: Element, simulated: boolean) {
 			entry.d = {} as Record<string, string>;
 
 			// retain extra data not in current form
-			const existing = GetCache(key);
+			const existing = GetCache(key, hash);
 			if (existing && existing.m == entry.m && typeof existing.d === "object") {
 				for (const key in existing.d) entry.d[key] = existing.d[key];
 			}
@@ -139,13 +139,8 @@ function RestoreNode(element: Element) {
 	const key = GetKey(element);
 	if (!key) return;
 
-	const cache = GetCache(key);
+	const cache = GetCache(key, GetAttribute(element, "hx-keep-hash"));
 	if (!cache) return;
-
-	const hash = GetAttribute(element, "hx-keep-hash");
-	if (hash || cache.h) { // if hashes present
-		if ((hash != cache.h)) return;
-	}
 
 	switch (MODES[cache.m]) {
 		case "innerHTML": {
@@ -208,8 +203,21 @@ type CacheEntry = {
 	e?: string, // expiry in seconds radix 36
 	h?: string, // hash, must match to restore
 };
-function GetCache(key: string): CacheEntry | null {
+function GetCache(key: string, hash: string | null): CacheEntry | null {
 	const data = LoadCache();
+
+	const cache = data[key] || null;
+	if (!cache) return null;
+
+	if (hash || cache.h) {
+		if (hash !== cache.h) return null;
+	}
+
+	const d = cache.e ? parseInt(cache.e, 36) : DEFAULT_EXPIRY;
+	const t = parseInt(cache.t, 36);
+
+	if (t + d < Date.now()/1000) return null;
+
 	return data[key] || null;
 }
 
@@ -369,64 +377,29 @@ document.addEventListener("load", () => {
 	for (const node of nodes) RestoreNode(node);
 });
 
-function Set(key: string, data: Record<string, string> | string, expiry?: number): void {
-	const entry: CacheEntry = GetCache(key) || { d: "", m: 0, t: "" };
-	entry.t = Math.floor(Date.now() / 1000).toString(36);
-
-	if (expiry) entry.e = Math.floor(expiry / 1000).toString(36);
-
-	if (typeof data === "string") {
-		entry.d = data;
-		entry.m = MODES.indexOf("value");
-	} else if (typeof entry.d === "string") {
-		entry.d = data;
-		entry.m = MODES.indexOf("form");
-	} else {
-		for (const key in data) entry.d[key] = data[key];
-		entry.m = MODES.indexOf("form");
-	}
-
-	SetCache(key, entry);
-}
-
-function Context(element: Element | null): string | null {
+function Context(element: Element | null): Element | null {
 	if (!element) return null;
 
 	const key = GetAttribute(element, "hx-keep-key");
-	if (key) return key;
+	if (key) return element;
 
 	const parent = element.closest("[hx-keep-key],[hx-keep-key-data]");
-	if (!parent) return null;
-
-	return GetAttribute(parent, "hx-keep-key");
+	return parent;
 }
 
 
 return {
 	/**
-	 * Given the element, return the hx-keep-key this element is within
-	 */
-	context: Context,
-
-	/**
-	 * Get the data stored in this current hx-keep
-	 */
-	get: (key: string) => GetCache(key)?.d,
-
-	/**
-	 * Save data into the hx-keep, this will only add data/overwrite, and will not remove any omitted entries
-	 * @param expiry in milliseconds
-	 */
-	set: Set,
-
-	/**
 	 * Get form value
 	 */
 	getValue: (ctx: Element | null, name: string): string | null => {
-		const key = Context(ctx);
+		ctx = Context(ctx);
+		if (!ctx) return null;
+
+		const key = GetKey(ctx);
 		if (!key) return null;
 
-		const data = GetCache(key)?.d;
+		const data = GetCache(key, GetAttribute(ctx, "hx-keep-hash"))?.d;
 		if (!data || typeof data !== "object") return null;
 
 		return data[name] || null;
@@ -434,16 +407,35 @@ return {
 
 	/**
 	 * Set form value
-	 * @param expiry in milliseconds
+	 * @param expiry in seconds
 	 */
 	setValue: (ctx: Element | null, name: string, value: string, expiry?: number) => {
-		const key = Context(ctx);
+		ctx = Context(ctx);
+		if (!ctx) return null;
+
+		const key = GetKey(ctx);
 		if (!key) return null;
 
 		const forward = {} as Record<string, string>;
 		forward[name] = value;
 
-		Set(key, forward, expiry);
+		const hash = GetAttribute(ctx, "hx-keep-hash");
+
+		const mode = MODES.indexOf("form");
+		const entry: CacheEntry = GetCache(key, hash) || { d: {}, m: mode, t: "" };
+
+		if (entry.m !== MODES.indexOf("form")) return;
+		if (typeof entry.d !== "object") return;
+
+		if (!expiry && !entry.e) expiry = GetExpiry(ctx);
+
+		if (expiry) entry.e = Math.floor(expiry).toString(36);
+		if (hash) entry.h = hash;
+
+		entry.d[name] = value;
+		entry.t = Math.floor(Date.now() / 1000).toString(36);
+
+		SetCache(key, entry);
 	},
 
 	/**

@@ -14,7 +14,7 @@ We also include bindings to allow client side code to read/write into the `hx-pa
 Import the library in your client side.
 
 ```html
-<script src="https://unpkg.com/hx-keep@1.0.1"></script>
+<script src="https://unpkg.com/hx-keep@1.0.2"></script>
 ```
 
 Enable the library at the level of your DOM you desire. i.e.:
@@ -102,55 +102,24 @@ There is only one type of wildcard supported which is the `*` which matches with
 
 ### Context
 
-```ts
-window.hx_keep.context = (element: Element | null) => string | null;
-```
-
-When supplied a `Element` it will determine which `hx-keep-key` it is under if any.
-This is useful in combination with `get()` and `set()` to allow client side code to store into a `hx-keep` form.
-
 ### Get
 
 ```ts
-window.hx_keep.get = (key: string) => string | Record<string, string> | undefined;
+window.hx_keep.getValue = (element: Element | null, name: string) => string | null;
 ```
 
-Returns the data currently stored in `hx-keep` under this key.
+Going from the provided element it will find the `hx-keep` form it is within, then return the value in the form.
 
 ### Set
 
 ```ts
-window.hx_keep.set = (key: string, data: Record<string, string> | string, expiry?: number) => void;
+window.hx_keep.setValue = (element: Element | null, name: string, value: string, expiry?: number) => void;
 ```
 
-Allows you to add data into `hx-keep`.
-When providing an object it will merge it with the existing data, meaning you don't have to run get first if you are attempting to just change a single attribute in a form.
+Will go from the provided element and find the relevant `hx-keep` form, then set the provided form value.
+It will also change the expiry if provided (time from now in milliseconds).
 
-```ts
-hx_keep.get("example"); // { "foo": "bar" }
-
-hx_keep.set("example", { baz: "boo" });
-
-hx_keep.get("example"); // { "foo": "bar", "baz": "boo" }
-```
-
-If expiry is unspecified it will continue with the currently expiry for the key. However when specified it must be measured in milliseconds from now.
-
-### GetValue
-
-```ts
-window.hx_keep.getValue = (key: Element, name: string) => string | null;
-```
-
-Shorthand for `hx_keep.get(hx_keep.context(element), name)`
-
-### SetValue
-
-```ts
-window.hx_keep.setValue = (key: Element, name: string, value: string, expiry?: number) => void;
-```
-
-Shorthand for `hx_keep.set(hx_keep.context(element), name, value, expiry)`
+If expiry is unspecified it will continue with the currently expiry for the key. However when specified it must be measured in seconds from now.
 
 ### Evict
 
