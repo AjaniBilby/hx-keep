@@ -7,12 +7,14 @@ Keep your htmx client state persistent across refreshes, new windows, and re-ope
 
 ![banner](/images/banner.gif)
 
+We also include bindings to allow client side code to read/write into the `hx-page` data for custom form elements, see [examples](/example/).
+
 ## Getting Started
 
 Import the library in your client side.
 
 ```html
-<script src="https://unpkg.com/hx-keep@1.0.0"></script>
+<script src="https://unpkg.com/hx-keep@1.0.1"></script>
 ```
 
 Enable the library at the level of your DOM you desire. i.e.:

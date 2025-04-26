@@ -389,22 +389,24 @@ function Set(key: string, data: Record<string, string> | string, expiry?: number
 	SetCache(key, entry);
 }
 
+function Context(element: Element | null): string | null {
+	if (!element) return null;
+
+	const key = GetAttribute(element, "hx-keep-key");
+	if (key) return key;
+
+	const parent = element.closest("[hx-keep-key],[hx-keep-key-data]");
+	if (!parent) return null;
+
+	return GetAttribute(parent, "hx-keep-key");
+}
+
 
 return {
 	/**
 	 * Given the element, return the hx-keep-key this element is within
 	 */
-	context: (element: Element | null): string | null => {
-		if (!element) return null;
-
-		const key = GetAttribute(element, "hx-keep-key");
-		if (key) return key;
-
-		const parent = element.closest("[hx-keep-key],[hx-keep-key-data]");
-		if (!parent) return null;
-
-		return GetAttribute(parent, "hx-keep-key");
-	},
+	context: Context,
 
 	/**
 	 * Get the data stored in this current hx-keep
@@ -413,14 +415,15 @@ return {
 
 	/**
 	 * Save data into the hx-keep, this will only add data/overwrite, and will not remove any omitted entries
+	 * @param expiry in milliseconds
 	 */
 	set: Set,
 
 	/**
 	 * Get form value
 	 */
-	getValue: (ctx: Element, name: string): string | null => {
-		const key = GetKey(ctx);
+	getValue: (ctx: Element | null, name: string): string | null => {
+		const key = Context(ctx);
 		if (!key) return null;
 
 		const data = GetCache(key)?.d;
@@ -433,8 +436,8 @@ return {
 	 * Set form value
 	 * @param expiry in milliseconds
 	 */
-	setValue: (ctx: Element, name: string, value: string, expiry?: number) => {
-		const key = GetKey(ctx);
+	setValue: (ctx: Element | null, name: string, value: string, expiry?: number) => {
+		const key = Context(ctx);
 		if (!key) return null;
 
 		const forward = {} as Record<string, string>;
