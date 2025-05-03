@@ -11,15 +11,37 @@ We also include bindings to allow client side code to read/write into the `hx-pa
 
 ## Getting Started
 
-Import the library in your client side.
+### CDN
 
 ```html
 <script src="https://unpkg.com/hx-keep@1.0.4"></script>
 ```
 
-Enable the library at the level of your DOM you desire. i.e.:
+### Bundle
+
+To bundle in an npm-style build system with ES modules, you will have to add `htmx` to the `document` like so:
+
+```
+npm i hx-drag
+```
+
+```javascript
+// index.js
+import "./htmx";
+import "hx-keep";
+```
+
+```javascript
+// htmx.js
+import htmx from "htmx.org";
+window.htmx = htmx; // to support hx-drag
+export default htmx;
+```
+
+### Enable
+
 ```html
-<body hx-ext="hx-keep">
+<body hx-ext="hx-keep">...</body>
 ```
 
 ---
