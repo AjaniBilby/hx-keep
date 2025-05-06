@@ -3,6 +3,8 @@ var hx_keep = function(){
 const MODES = [ "innerHTML", "outerHTML", "form", "value" ];
 const DEFAULT_EXPIRY = 30 * 60; // 30 mins in seconds
 
+const forms = new Map<string, Record<string, string>>();
+
 (globalThis as any).htmx.defineExtension("hx-keep", {
 	init: () => { Prune(LoadCache()) },
 	onEvent: (name: string, event: CustomEvent) => {
@@ -23,7 +25,7 @@ const DEFAULT_EXPIRY = 30 * 60; // 30 mins in seconds
 					const nodes = [ ...parent.querySelectorAll("[hx-keep],[data-hx-keep]") ];
 					if (keep !== null) nodes.push(parent);
 
-					for (const e of nodes) RestoreNode(e);
+					for (const e of nodes) Mount(e);
 				}
 
 				const root = GetAttribute(parent, "hx-keep") ? parent : parent.closest("[hx-keep],[data-hx-keep]");
@@ -103,6 +105,9 @@ function SaveNode(element: Element, simulated: boolean) {
 			if (!(element instanceof HTMLFormElement)) return console.error("hx-keep cannot restore form on", element);
 			if (simulated) return;
 
+			const form = forms.get(key) || {};
+			let saved = true;
+
 			entry.m = MODES.indexOf("form");
 			entry.d = {} as Record<string, string>;
 
@@ -125,8 +130,13 @@ function SaveNode(element: Element, simulated: boolean) {
 				}
 
 				entry.d[name] = value.toString();
+
+				if (!form[name]) continue;
+				if (entry.d[name] !== form[name]) saved = false;
 			}
 
+			if (saved) element.classList.remove("hx-keep");
+			else element.classList.add("hx-keep");
 
 			break;
 		}
@@ -164,6 +174,24 @@ function SaveNode(element: Element, simulated: boolean) {
 	SetCache(key, entry);
 }
 
+function Mount(element: Element) {
+	CaptureForm(element);
+	RestoreNode(element);
+}
+
+function CaptureForm(element: Element) {
+	const key = GetKey(element);
+	if (!key) return;
+
+	if (element instanceof HTMLFormElement) {
+		const formData = new FormData(element);
+		const data: Record<string, string> = {};
+		for (const entry of formData.entries()) data[entry[0]] = entry[1].toString();
+
+		forms.set(key, data);
+	}
+}
+
 function RestoreNode(element: Element) {
 	if (GetAttribute(element, "hx-keep-restore") === "off") return;
 
@@ -177,11 +205,13 @@ function RestoreNode(element: Element) {
 		case "innerHTML": {
 			if (typeof cache.d !== "string") return;
 			element.innerHTML = cache.d;
+			element.classList.add("hx-keep");
 			return;
 		}
 		case "outerHTML": {
 			if (typeof cache.d !== "string") return;
 			element.outerHTML = cache.d;
+			element.classList.add("hx-keep");
 			return;
 		}
 		case "form": {
@@ -413,7 +443,7 @@ document.addEventListener("keyup", (ev) => {
 
 document.addEventListener("load", () => {
 	const nodes = document.body.querySelectorAll("[hx-keep],[data-hx-keep]");
-	for (const node of nodes) RestoreNode(node);
+	for (const node of nodes) Mount(node);
 });
 
 function Context(element: Element | null): Element | null {

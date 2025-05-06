@@ -61,7 +61,11 @@ This attribute specifies which data to store and restore from based on the mode 
 | `first x` | Will keep only the first `x` elements inside the main element. To prevent cutting in weird places we recommend wrapping items in a `<div style="display:contents;">` so you can control where it cuts.
 | `last x` | Same as `first` but takes the last elements
 | `form`  | Tracks and restores only the form values, rather than the entire html
-| `value` | Identical to `form` but for use directly on an `<input>`
+
+If you want to cache only a single input, we recommend wrapping it in a:
+```html
+<form id="form" style="display: contents" hx-keep="form"><input name="myValue"></input></form>
+```
 
 ### `hx-keep-key`
 
@@ -100,6 +104,16 @@ This must be an integer value with a postfix for the units.
 ### `hx-history="false"`
 
 This library will respect [hx-history](https://htmx.org/attributes/hx-history/), and omit any inputs or elements with this attribute when saving it's data.
+
+---
+
+## CSS Classes
+
+### `hx-keep`
+
+If an element has this class if means it is being cached by `hx-keep` and does not match what the server originally sent.
+
+In the case of a `hx-keep="form"`, this class will update as the form values are changed allowing for save state indicators based on whether the input is actually different from what was originally served.
 
 ---
 
