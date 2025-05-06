@@ -188,12 +188,18 @@ function RestoreNode(element: Element) {
 			if (typeof cache.d !== "object") return;
 			if (!(element instanceof HTMLFormElement)) return console.error("hx-keep cannot restore form on", element);
 
-			for (const field of element.elements) {
-				const key = field.getAttribute("name");
-				if (!key) continue;
+			const formData = new FormData(element);
+			let saved = true;
 
-				const value = cache.d[key];
+			for (const field of element.elements) {
+				const name = field.getAttribute("name");
+				if (!name) continue;
+
+				const value = cache.d[name];
 				if (!value) continue;
+
+				const curr = formData.get("name")?.toString();
+				if (curr !== value && !(!curr && value === "off")) saved = false;
 
 				if (field instanceof HTMLTextAreaElement) field.value = value;
 				else if (field instanceof HTMLInputElement) {
@@ -204,6 +210,8 @@ function RestoreNode(element: Element) {
 					}
 				}
 			}
+
+			if (!saved) element.classList.add("hx-keep");
 
 			return;
 		}
@@ -228,7 +236,7 @@ function GetKey(element: Element) {
 
 
 type CacheEntry = {
-	d:  string | Record<string, string>, // data
+	d:  Record<string, string> | string, // data
 	m:  number, // mode
 	t:  string, // timestamp unix radix 36
 	e?: string, // expiry in seconds radix 36
@@ -419,19 +427,72 @@ function Context(element: Element | null): Element | null {
 }
 
 
+function ResolveTarget(target: Element | string | null) {
+	if (target === null) return null;
+
+	if (typeof target === "string") return { key: target, hash: null };
+
+	let hash: string | null = null;
+	target = Context(target);
+	if (!target) return null;
+
+	const key = GetKey(target);
+	if (!key) return null;
+
+	hash = GetAttribute(target, "hx-keep-hash");
+	return { key, hash };
+}
+
+function getForm(target: Element | string | null): Record<string, string> | null {
+	const ctx = ResolveTarget(target);
+	if (!ctx) return null;
+
+	const data = GetCache(ctx.key, ctx.hash)?.d;
+	if (typeof data !== "object") return null;
+
+	return data;
+}
+
+function setForm(target: Element | string | null, data: Record<string, string>, expiry?: number) {
+	const ctx = ResolveTarget(target);
+	if (!ctx) return null;
+
+	const mode = MODES.indexOf("form");
+	let entry: CacheEntry = GetCache(ctx.key, ctx.hash) || { d: {}, m: mode, t: "" };
+
+	if (ctx.hash) entry.h = ctx.hash;
+	entry.m = mode;
+
+	if (expiry) entry.e = Math.floor(expiry).toString(36);
+	else if (target instanceof Element) {
+		const expiry = GetExpiry(target);
+		if (expiry) entry.e = Math.floor(expiry).toString(36);
+	}
+
+	if (typeof entry.d === "object") {
+		for (const key in data) entry.d[key] = data[key];
+	} else entry.d = data;
+
+	entry.t = Math.floor(Date.now() / 1000).toString(36);
+	SetCache(ctx.key, entry);
+}
+
+
 return {
+	getForm,
+
+	/**
+	 * Override a whole form
+	 * @param expiry in seconds
+	 */
+	setForm,
+
 	/**
 	 * Get form value
 	 */
-	getValue: (ctx: Element | null, name: string): string | null => {
-		ctx = Context(ctx);
-		if (!ctx) return null;
-
-		const key = GetKey(ctx);
-		if (!key) return null;
-
-		const data = GetCache(key, GetAttribute(ctx, "hx-keep-hash"))?.d;
-		if (!data || typeof data !== "object") return null;
+	getValue: (ctx: Element | string | null, name: string): string | null => {
+		const data = getForm(ctx);
+		if (!data) return null;
 
 		return data[name] || null;
 	},
@@ -440,33 +501,19 @@ return {
 	 * Set form value
 	 * @param expiry in seconds
 	 */
-	setValue: (ctx: Element | null, name: string, value: string, expiry?: number) => {
+	setValue: (ctx: Element | string | null, name: string, value: string, expiry?: number) => {
+		setForm(ctx, { [name]: value }, expiry);
+	},
+
+	/**
+	 * Is there a difference between the current cache and the original?
+	 * @param ctx
+	 */
+	isSaved(ctx: Element | null): boolean {
 		ctx = Context(ctx);
-		if (!ctx) return null;
+		if (!ctx) return false;
 
-		const key = GetKey(ctx);
-		if (!key) return null;
-
-		const forward = {} as Record<string, string>;
-		forward[name] = value;
-
-		const hash = GetAttribute(ctx, "hx-keep-hash");
-
-		const mode = MODES.indexOf("form");
-		const entry: CacheEntry = GetCache(key, hash) || { d: {}, m: mode, t: "" };
-
-		if (entry.m !== MODES.indexOf("form")) return;
-		if (typeof entry.d !== "object") return;
-
-		if (!expiry && !entry.e) expiry = GetExpiry(ctx);
-
-		if (expiry) entry.e = Math.floor(expiry).toString(36);
-		if (hash) entry.h = hash;
-
-		entry.d[name] = value;
-		entry.t = Math.floor(Date.now() / 1000).toString(36);
-
-		SetCache(key, entry);
+		return ctx.classList.contains("hx-keep");
 	},
 
 	/**
