@@ -14,7 +14,7 @@ We also include bindings to allow client side code to read/write into the `hx-pa
 ### CDN
 
 ```html
-<script src="https://unpkg.com/hx-keep@1.0.4"></script>
+<script src="https://unpkg.com/hx-keep@1.1.0"></script>
 ```
 
 ### Bundle
