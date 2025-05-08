@@ -1,7 +1,7 @@
 <html>
 	<head>
 		<script src="https://unpkg.com/htmx.org@2.0.4" crossOrigin="anonymous"></script>
-		<script src="https://unpkg.com/hx-keep@1.1.0"  crossOrigin="anonymous"></script>
+		<script src="https://unpkg.com/hx-keep@1.1.1"  crossOrigin="anonymous"></script>
 		<title>Basic Example</title>
 
 		<style>
@@ -37,6 +37,12 @@
 					<input type="radio" name="color" value="blue"></input>
 				</div>
 				<input type="checkbox" name="check" checked></input>
+
+				<select name="selector">
+					<option></option>
+					<option value="hello">hello</option>
+					<option value="world">world</option>
+				</select>
 
 				<input name="pass" type="password" hx-history="false"></input>
 

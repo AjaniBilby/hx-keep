@@ -74,6 +74,87 @@ function RemoveBadHistory(html: string) {
 	return container.innerHTML;
 }
 
+
+
+
+function Mount(element: Element) {
+	CaptureForm(element);
+	RestoreNode(element);
+}
+
+function CaptureForm(element: Element) {
+	if (element.classList.contains("hx-keep")) return;
+
+	const key = GetKey(element);
+	if (!key) return;
+
+	if (element instanceof HTMLFormElement) {
+		const formData = new FormData(element);
+		const data: Record<string, string> = {};
+		for (const entry of formData.entries()) data[entry[0]] = entry[1].toString();
+
+		forms.set(key, data);
+	}
+}
+
+function RestoreNode(element: Element) {
+	if (GetAttribute(element, "hx-keep-restore") === "off") return;
+
+	const key = GetKey(element);
+	if (!key) return;
+
+	const cache = GetCache(key, GetAttribute(element, "hx-keep-hash"));
+	if (!cache) return;
+
+	switch (MODES[cache.m]) {
+		case "innerHTML": {
+			if (typeof cache.d !== "string") return;
+			element.innerHTML = cache.d;
+			element.classList.add("hx-keep");
+			return;
+		}
+		case "outerHTML": {
+			if (typeof cache.d !== "string") return;
+			element.outerHTML = cache.d;
+			element.classList.add("hx-keep");
+			return;
+		}
+		case "form": {
+			if (typeof cache.d !== "object") return;
+			if (!(element instanceof HTMLFormElement)) return console.error("hx-keep cannot restore form on", element);
+
+			for (const field of element.elements) {
+				const name = field.getAttribute("name");
+				if (!name) continue;
+
+				const value = cache.d[name];
+				if (value === undefined) continue;
+
+				if (field instanceof HTMLTextAreaElement) field.value = value;
+				if (field instanceof HTMLTextAreaElement) field.value = value;
+				else if (field instanceof HTMLInputElement) {
+					switch (field.type) {
+						case "radio": if (field.value === value) field.checked = true; break;
+						case "checkbox": field.checked = value === "on"; break;
+						default: field.value = value;
+					}
+				}
+			}
+
+			if (IsSaved(forms.get(key), cache.d)) element.classList.remove("hx-keep");
+			else element.classList.add("hx-keep");
+
+			return;
+		}
+		case "value": {
+			if (!(element instanceof HTMLInputElement)) return console.error("hx-keep cannot restore value on", element);
+			if (typeof cache.d !== "string") return;
+			element.value = cache.d;
+			return;
+		}
+	}
+}
+
 function SaveNode(element: Element, simulated: boolean) {
 	const key = GetKey(element);
 	if (!key) return;
@@ -175,88 +256,6 @@ function SaveNode(element: Element, simulated: boolean) {
 
 
 	SetCache(key, entry);
-}
-
-
-
-
-
-function Mount(element: Element) {
-	CaptureForm(element);
-	RestoreNode(element);
-}
-
-function CaptureForm(element: Element) {
-	if (element.classList.contains("hx-keep")) return;
-
-	const key = GetKey(element);
-	if (!key) return;
-
-	if (element instanceof HTMLFormElement) {
-		const formData = new FormData(element);
-		const data: Record<string, string> = {};
-		for (const entry of formData.entries()) data[entry[0]] = entry[1].toString();
-
-		forms.set(key, data);
-	}
-}
-
-function RestoreNode(element: Element) {
-	if (GetAttribute(element, "hx-keep-restore") === "off") return;
-
-	const key = GetKey(element);
-	if (!key) return;
-
-	const cache = GetCache(key, GetAttribute(element, "hx-keep-hash"));
-	if (!cache) return;
-
-	switch (MODES[cache.m]) {
-		case "innerHTML": {
-			if (typeof cache.d !== "string") return;
-			element.innerHTML = cache.d;
-			element.classList.add("hx-keep");
-			return;
-		}
-		case "outerHTML": {
-			if (typeof cache.d !== "string") return;
-			element.outerHTML = cache.d;
-			element.classList.add("hx-keep");
-			return;
-		}
-		case "form": {
-			if (typeof cache.d !== "object") return;
-			if (!(element instanceof HTMLFormElement)) return console.error("hx-keep cannot restore form on", element);
-
-
-			for (const field of element.elements) {
-				const name = field.getAttribute("name");
-				if (!name) continue;
-
-				const value = cache.d[name];
-				if (value === undefined) continue;
-
-				if (field instanceof HTMLTextAreaElement) field.value = value;
-				else if (field instanceof HTMLInputElement) {
-					switch (field.type) {
-						case "radio": if (field.value === value) field.checked = true; break;
-						case "checkbox": field.checked = value === "on"; break;
-						default: field.value = value;
-					}
-				}
-			}
-
-			if (IsSaved(forms.get(key), cache.d)) element.classList.remove("hx-keep");
-			else element.classList.add("hx-keep");
-
-			return;
-		}
-		case "value": {
-			if (!(element instanceof HTMLInputElement)) return console.error("hx-keep cannot restore value on", element);
-			if (typeof cache.d !== "string") return;
-			element.value = cache.d;
-			return;
-		}
-	}
 }
 
 function IsSaved(init: Record<string, string> | undefined, cache: Record<string, string>) {
