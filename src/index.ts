@@ -57,6 +57,10 @@ const forms = new Map<string, Record<string, string>>();
 	}
 });
 
+
+
+
+
 function HasBadHistory(element: Element) {
 	return !!element.querySelector("[hx-history='false']")
 }
@@ -105,9 +109,6 @@ function SaveNode(element: Element, simulated: boolean) {
 			if (!(element instanceof HTMLFormElement)) return console.error("hx-keep cannot restore form on", element);
 			if (simulated) return;
 
-			const form = forms.get(key) || {};
-			let saved = true;
-
 			entry.m = MODES.indexOf("form");
 			entry.d = {} as Record<string, string>;
 
@@ -123,18 +124,20 @@ function SaveNode(element: Element, simulated: boolean) {
 
 			const formData = new FormData(element);
 			const historyCheck = HasBadHistory(element);
+			let saved = true;
 			for (const [name, value] of formData.entries()) {
 				if (historyCheck) {
 					const input = element.querySelector(`[name=${name}]`);
-					if (input?.getAttribute("hx-history") === "false") continue;
+					if (input?.getAttribute("hx-history") === "false") {
+						if (value) saved = false;
+						continue;
+					}
 				}
 
 				entry.d[name] = value.toString();
-
-				if (!form[name]) continue;
-				if (entry.d[name] !== form[name]) saved = false;
 			}
 
+			if (saved) saved = IsSaved(forms.get(key), entry.d);
 			if (saved) element.classList.remove("hx-keep");
 			else element.classList.add("hx-keep");
 
@@ -174,12 +177,18 @@ function SaveNode(element: Element, simulated: boolean) {
 	SetCache(key, entry);
 }
 
+
+
+
+
 function Mount(element: Element) {
 	CaptureForm(element);
 	RestoreNode(element);
 }
 
 function CaptureForm(element: Element) {
+	if (element.classList.contains("hx-keep")) return;
+
 	const key = GetKey(element);
 	if (!key) return;
 
@@ -218,18 +227,13 @@ function RestoreNode(element: Element) {
 			if (typeof cache.d !== "object") return;
 			if (!(element instanceof HTMLFormElement)) return console.error("hx-keep cannot restore form on", element);
 
-			const formData = new FormData(element);
-			let saved = true;
 
 			for (const field of element.elements) {
 				const name = field.getAttribute("name");
 				if (!name) continue;
 
 				const value = cache.d[name];
-				if (!value) continue;
-
-				const curr = formData.get("name")?.toString();
-				if (curr !== value && !(!curr && value === "off")) saved = false;
+				if (value === undefined) continue;
 
 				if (field instanceof HTMLTextAreaElement) field.value = value;
 				else if (field instanceof HTMLInputElement) {
@@ -241,7 +245,8 @@ function RestoreNode(element: Element) {
 				}
 			}
 
-			if (!saved) element.classList.add("hx-keep");
+			if (IsSaved(forms.get(key), cache.d)) element.classList.remove("hx-keep");
+			else element.classList.add("hx-keep");
 
 			return;
 		}
@@ -253,6 +258,23 @@ function RestoreNode(element: Element) {
 		}
 	}
 }
+
+function IsSaved(init: Record<string, string> | undefined, cache: Record<string, string>) {
+	if (!init) return false;
+
+	for (const name in cache) {
+		if (cache[name] != init[name]) {
+			if (cache[name] === "off" && !(name in init)) continue;
+			return false;
+		}
+	}
+
+	return true;
+}
+
+
+
+
 
 function GetKey(element: Element) {
 	const key = GetAttribute(element, "hx-keep-key");
@@ -290,14 +312,12 @@ function GetCache(key: string, hash: string | null): CacheEntry | null {
 	return data[key] || null;
 }
 
-
 function SetCache(key: string, data: CacheEntry) {
 	const index = LoadCache();
 	index[key] = data;
 
 	SaveCache(index);
 }
-
 
 type Cache = Record<string, CacheEntry>;
 function LoadCache(): Cache {
@@ -323,6 +343,7 @@ function SaveCache(data: Cache) {
 		}
 	}
 }
+
 
 
 function Prune(index: Cache, force = false) {
@@ -362,6 +383,8 @@ function Prune(index: Cache, force = false) {
 
 
 
+
+
 function GetAttribute(element: Element, attribute: string) {
 	return element.getAttribute(attribute) || element.getAttribute("data-"+attribute);
 }
@@ -377,6 +400,8 @@ function GetExpiry(element: Element) {
 
 	return Number(expiry);
 }
+
+
 
 
 
@@ -441,10 +466,9 @@ document.addEventListener("keyup", (ev) => {
 	if (ev.target instanceof HTMLTextAreaElement) return AutoSave(ev.target);
 });
 
-document.addEventListener("load", () => {
-	const nodes = document.body.querySelectorAll("[hx-keep],[data-hx-keep]");
-	for (const node of nodes) Mount(node);
-});
+
+
+
 
 function Context(element: Element | null): Element | null {
 	if (!element) return null;
@@ -455,7 +479,6 @@ function Context(element: Element | null): Element | null {
 	const parent = element.closest("[hx-keep-key],[hx-keep-key-data]");
 	return parent;
 }
-
 
 function ResolveTarget(target: Element | string | null) {
 	if (target === null) return null;
