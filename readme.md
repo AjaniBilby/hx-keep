@@ -99,7 +99,7 @@ This must be an integer value with a postfix for the units.
 | `h` | Hours |
 | `d` | Days |
 
-> Note: `hx-push` will not automatically clear the data as soon as they expire, it will only prune data when a window is started
+> Note: `hx-keep` will not automatically clear the data as soon as they expire, it will only prune data when a window is started
 
 ### `hx-history="false"`
 
