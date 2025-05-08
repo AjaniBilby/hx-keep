@@ -3,6 +3,8 @@ var hx_keep = function(){
 const MODES = [ "innerHTML", "outerHTML", "form", "value" ];
 const DEFAULT_EXPIRY = 30 * 60; // 30 mins in seconds
 
+const forms = new Map<string, Record<string, string>>();
+
 (globalThis as any).htmx.defineExtension("hx-keep", {
 	init: () => { Prune(LoadCache()) },
 	onEvent: (name: string, event: CustomEvent) => {
@@ -23,7 +25,7 @@ const DEFAULT_EXPIRY = 30 * 60; // 30 mins in seconds
 					const nodes = [ ...parent.querySelectorAll("[hx-keep],[data-hx-keep]") ];
 					if (keep !== null) nodes.push(parent);
 
-					for (const e of nodes) RestoreNode(e);
+					for (const e of nodes) Mount(e);
 				}
 
 				const root = GetAttribute(parent, "hx-keep") ? parent : parent.closest("[hx-keep],[data-hx-keep]");
@@ -54,6 +56,10 @@ const DEFAULT_EXPIRY = 30 * 60; // 30 mins in seconds
 		}
 	}
 });
+
+
+
+
 
 function HasBadHistory(element: Element) {
 	return !!element.querySelector("[hx-history='false']")
@@ -118,15 +124,22 @@ function SaveNode(element: Element, simulated: boolean) {
 
 			const formData = new FormData(element);
 			const historyCheck = HasBadHistory(element);
+			let saved = true;
 			for (const [name, value] of formData.entries()) {
 				if (historyCheck) {
 					const input = element.querySelector(`[name=${name}]`);
-					if (input?.getAttribute("hx-history") === "false") continue;
+					if (input?.getAttribute("hx-history") === "false") {
+						if (value) saved = false;
+						continue;
+					}
 				}
 
 				entry.d[name] = value.toString();
 			}
 
+			if (saved) saved = IsSaved(forms.get(key), entry.d);
+			if (saved) element.classList.remove("hx-keep");
+			else element.classList.add("hx-keep");
 
 			break;
 		}
@@ -164,6 +177,30 @@ function SaveNode(element: Element, simulated: boolean) {
 	SetCache(key, entry);
 }
 
+
+
+
+
+function Mount(element: Element) {
+	CaptureForm(element);
+	RestoreNode(element);
+}
+
+function CaptureForm(element: Element) {
+	if (element.classList.contains("hx-keep")) return;
+
+	const key = GetKey(element);
+	if (!key) return;
+
+	if (element instanceof HTMLFormElement) {
+		const formData = new FormData(element);
+		const data: Record<string, string> = {};
+		for (const entry of formData.entries()) data[entry[0]] = entry[1].toString();
+
+		forms.set(key, data);
+	}
+}
+
 function RestoreNode(element: Element) {
 	if (GetAttribute(element, "hx-keep-restore") === "off") return;
 
@@ -177,23 +214,26 @@ function RestoreNode(element: Element) {
 		case "innerHTML": {
 			if (typeof cache.d !== "string") return;
 			element.innerHTML = cache.d;
+			element.classList.add("hx-keep");
 			return;
 		}
 		case "outerHTML": {
 			if (typeof cache.d !== "string") return;
 			element.outerHTML = cache.d;
+			element.classList.add("hx-keep");
 			return;
 		}
 		case "form": {
 			if (typeof cache.d !== "object") return;
 			if (!(element instanceof HTMLFormElement)) return console.error("hx-keep cannot restore form on", element);
 
-			for (const field of element.elements) {
-				const key = field.getAttribute("name");
-				if (!key) continue;
 
-				const value = cache.d[key];
-				if (!value) continue;
+			for (const field of element.elements) {
+				const name = field.getAttribute("name");
+				if (!name) continue;
+
+				const value = cache.d[name];
+				if (value === undefined) continue;
 
 				if (field instanceof HTMLTextAreaElement) field.value = value;
 				else if (field instanceof HTMLInputElement) {
@@ -205,6 +245,9 @@ function RestoreNode(element: Element) {
 				}
 			}
 
+			if (IsSaved(forms.get(key), cache.d)) element.classList.remove("hx-keep");
+			else element.classList.add("hx-keep");
+
 			return;
 		}
 		case "value": {
@@ -215,6 +258,23 @@ function RestoreNode(element: Element) {
 		}
 	}
 }
+
+function IsSaved(init: Record<string, string> | undefined, cache: Record<string, string>) {
+	if (!init) return false;
+
+	for (const name in cache) {
+		if (cache[name] != init[name]) {
+			if (cache[name] === "off" && !(name in init)) continue;
+			return false;
+		}
+	}
+
+	return true;
+}
+
+
+
+
 
 function GetKey(element: Element) {
 	const key = GetAttribute(element, "hx-keep-key");
@@ -228,7 +288,7 @@ function GetKey(element: Element) {
 
 
 type CacheEntry = {
-	d:  string | Record<string, string>, // data
+	d:  Record<string, string> | string, // data
 	m:  number, // mode
 	t:  string, // timestamp unix radix 36
 	e?: string, // expiry in seconds radix 36
@@ -252,14 +312,12 @@ function GetCache(key: string, hash: string | null): CacheEntry | null {
 	return data[key] || null;
 }
 
-
 function SetCache(key: string, data: CacheEntry) {
 	const index = LoadCache();
 	index[key] = data;
 
 	SaveCache(index);
 }
-
 
 type Cache = Record<string, CacheEntry>;
 function LoadCache(): Cache {
@@ -285,6 +343,7 @@ function SaveCache(data: Cache) {
 		}
 	}
 }
+
 
 
 function Prune(index: Cache, force = false) {
@@ -324,6 +383,8 @@ function Prune(index: Cache, force = false) {
 
 
 
+
+
 function GetAttribute(element: Element, attribute: string) {
 	return element.getAttribute(attribute) || element.getAttribute("data-"+attribute);
 }
@@ -339,6 +400,8 @@ function GetExpiry(element: Element) {
 
 	return Number(expiry);
 }
+
+
 
 
 
@@ -403,10 +466,9 @@ document.addEventListener("keyup", (ev) => {
 	if (ev.target instanceof HTMLTextAreaElement) return AutoSave(ev.target);
 });
 
-document.addEventListener("load", () => {
-	const nodes = document.body.querySelectorAll("[hx-keep],[data-hx-keep]");
-	for (const node of nodes) RestoreNode(node);
-});
+
+
+
 
 function Context(element: Element | null): Element | null {
 	if (!element) return null;
@@ -418,20 +480,72 @@ function Context(element: Element | null): Element | null {
 	return parent;
 }
 
+function ResolveTarget(target: Element | string | null) {
+	if (target === null) return null;
+
+	if (typeof target === "string") return { key: target, hash: null };
+
+	let hash: string | null = null;
+	target = Context(target);
+	if (!target) return null;
+
+	const key = GetKey(target);
+	if (!key) return null;
+
+	hash = GetAttribute(target, "hx-keep-hash");
+	return { key, hash };
+}
+
+function getForm(target: Element | string | null): Record<string, string> | null {
+	const ctx = ResolveTarget(target);
+	if (!ctx) return null;
+
+	const data = GetCache(ctx.key, ctx.hash)?.d;
+	if (typeof data !== "object") return null;
+
+	return data;
+}
+
+function setForm(target: Element | string | null, data: Record<string, string>, expiry?: number) {
+	const ctx = ResolveTarget(target);
+	if (!ctx) return null;
+
+	const mode = MODES.indexOf("form");
+	let entry: CacheEntry = GetCache(ctx.key, ctx.hash) || { d: {}, m: mode, t: "" };
+
+	if (ctx.hash) entry.h = ctx.hash;
+	entry.m = mode;
+
+	if (expiry) entry.e = Math.floor(expiry).toString(36);
+	else if (target instanceof Element) {
+		const expiry = GetExpiry(target);
+		if (expiry) entry.e = Math.floor(expiry).toString(36);
+	}
+
+	if (typeof entry.d === "object") {
+		for (const key in data) entry.d[key] = data[key];
+	} else entry.d = data;
+
+	entry.t = Math.floor(Date.now() / 1000).toString(36);
+	SetCache(ctx.key, entry);
+}
+
 
 return {
+	getForm,
+
+	/**
+	 * Override a whole form
+	 * @param expiry in seconds
+	 */
+	setForm,
+
 	/**
 	 * Get form value
 	 */
-	getValue: (ctx: Element | null, name: string): string | null => {
-		ctx = Context(ctx);
-		if (!ctx) return null;
-
-		const key = GetKey(ctx);
-		if (!key) return null;
-
-		const data = GetCache(key, GetAttribute(ctx, "hx-keep-hash"))?.d;
-		if (!data || typeof data !== "object") return null;
+	getValue: (ctx: Element | string | null, name: string): string | null => {
+		const data = getForm(ctx);
+		if (!data) return null;
 
 		return data[name] || null;
 	},
@@ -440,33 +554,19 @@ return {
 	 * Set form value
 	 * @param expiry in seconds
 	 */
-	setValue: (ctx: Element | null, name: string, value: string, expiry?: number) => {
+	setValue: (ctx: Element | string | null, name: string, value: string, expiry?: number) => {
+		setForm(ctx, { [name]: value }, expiry);
+	},
+
+	/**
+	 * Is there a difference between the current cache and the original?
+	 * @param ctx
+	 */
+	isSaved(ctx: Element | null): boolean {
 		ctx = Context(ctx);
-		if (!ctx) return null;
+		if (!ctx) return false;
 
-		const key = GetKey(ctx);
-		if (!key) return null;
-
-		const forward = {} as Record<string, string>;
-		forward[name] = value;
-
-		const hash = GetAttribute(ctx, "hx-keep-hash");
-
-		const mode = MODES.indexOf("form");
-		const entry: CacheEntry = GetCache(key, hash) || { d: {}, m: mode, t: "" };
-
-		if (entry.m !== MODES.indexOf("form")) return;
-		if (typeof entry.d !== "object") return;
-
-		if (!expiry && !entry.e) expiry = GetExpiry(ctx);
-
-		if (expiry) entry.e = Math.floor(expiry).toString(36);
-		if (hash) entry.h = hash;
-
-		entry.d[name] = value;
-		entry.t = Math.floor(Date.now() / 1000).toString(36);
-
-		SetCache(key, entry);
+		return ctx.classList.contains("hx-keep");
 	},
 
 	/**
