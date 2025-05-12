@@ -507,7 +507,7 @@ function getForm(target: Element | string | null): Record<string, string> | null
 
 function setForm(target: Element | string | null, data: Record<string, string>, expiry?: number) {
 	const ctx = ResolveTarget(target);
-	if (!ctx) return null;
+	if (!ctx) return;
 
 	const mode = MODES.indexOf("form");
 	let entry: CacheEntry = GetCache(ctx.key, ctx.hash) || { d: {}, m: mode, t: "" };
@@ -529,6 +529,8 @@ function setForm(target: Element | string | null, data: Record<string, string>, 
 	SetCache(ctx.key, entry);
 }
 
+const prune = () => Prune(LoadCache(), false);
+setInterval(prune, 600_000); // every 10mins
 
 return {
 	getForm,
@@ -581,7 +583,7 @@ return {
 	/**
 	 * Remove expired elements
 	 */
-	prune: () => Prune(LoadCache(), false),
+	prune,
 
 	/**
 	 * Delete all hx-keep data

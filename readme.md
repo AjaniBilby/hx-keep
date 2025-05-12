@@ -145,7 +145,7 @@ There is only one type of wildcard supported which is the `*` which matches with
 ### Get
 
 ```ts
-window.hx_keep.getValue = (element: Element | null, name: string) => string | null;
+window.hx_keep.getValue = (ctx: Element | string | null, name: string): string | null;
 ```
 
 Going from the provided element it will find the `hx-keep` form it is within, then return the value in the form.
@@ -153,13 +153,21 @@ Going from the provided element it will find the `hx-keep` form it is within, th
 ### Set
 
 ```ts
-window.hx_keep.setValue = (element: Element | null, name: string, value: string, expiry?: number) => void;
+window.hx_keep.setValue = (ctx: Element | string | null, name: string, value: string, expiry?: number): void;
 ```
 
 Will go from the provided element and find the relevant `hx-keep` form, then set the provided form value.
 It will also change the expiry if provided (time from now in milliseconds).
 
 If expiry is unspecified it will continue with the currently expiry for the key. However when specified it must be measured in seconds from now.
+
+### Get Form
+
+Same as [`getValue()`](#get) but returns the whole form as `Record<string, string>`
+
+### Set Form
+
+Same as [`setValue()`](#set) but takes the whole form as `Record<string, string>`
 
 ### Evict
 
@@ -196,6 +204,14 @@ window.hx_keep.clear = () => void;
 
 Deletes all `hx-keep` data, this is useful for ensuring all data is removed on logout.
 Though you could also use a [http `hx-keep-evict: *` header](#response-hx-keep-evict) for this purpose
+
+### Is Saved
+
+```ts
+window.hx_keep.isSaved = (ctx: Element | null): boolean;
+```
+
+Returns if the `hx-prep` context is different from the original server content or not
 
 ---
 
